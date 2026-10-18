@@ -1,0 +1,17 @@
+name: flywire-dal
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pandas
+  - networkx
+  - matplotlib
+  - jupyter
+  - pyarrow
+  - requests
+  - tqdm
+  - pip:
+      - navis
+      - fafbseg
