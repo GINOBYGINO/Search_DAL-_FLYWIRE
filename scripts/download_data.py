@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import shutil
+import subprocess
 import sys
 import zipfile
 from datetime import date
@@ -68,6 +69,26 @@ def md5_file(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
+def download_with_curl(url: str, dest: Path) -> None:
+    """Prefer curl for large files: native resume, fewer Windows file locks."""
+    cmd = [
+        "curl.exe",
+        "-L",
+        "--retry",
+        "20",
+        "--retry-delay",
+        "2",
+        "--retry-all-errors",
+        "-C",
+        "-",
+        "-o",
+        str(dest),
+        url,
+    ]
+    print(" ", " ".join(cmd))
+    subprocess.run(cmd, check=False)
+
+
 def download(
     url: str,
     dest: Path,
@@ -76,8 +97,8 @@ def download(
 ) -> bool:
     """Download url to dest. Returns True if a new download happened.
 
-    Supports resume via .part file. Re-downloads if existing file is smaller
-    than expected_bytes.
+    Large / resumable downloads use curl.exe when available. Re-downloads if
+    existing file is smaller than expected_bytes.
     """
     if (
         dest.exists()
@@ -93,29 +114,33 @@ def download(
         )
 
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if force and dest.exists():
+        dest.unlink()
+
+    # Large feather: curl resume is more reliable on Windows than requests+rename
+    use_curl = expected_bytes is not None and expected_bytes >= 50_000_000
+    if use_curl and shutil.which("curl.exe"):
+        for attempt in range(1, 16):
+            print(f"curl attempt {attempt} -> {dest.name}")
+            download_with_curl(url, dest)
+            size = dest.stat().st_size if dest.exists() else 0
+            if expected_bytes is None or size >= expected_bytes:
+                print(f"saved: {dest.name} ({size:,} bytes)")
+                return True
+            print(f"still incomplete ({size:,}); retrying…")
+        raise RuntimeError(
+            f"download incomplete for {dest.name}: "
+            f"{dest.stat().st_size if dest.exists() else 0:,} < {expected_bytes:,} bytes"
+        )
+
     tmp = dest.with_suffix(dest.suffix + ".part")
-
-    # Prefer resuming into the destination itself when partially present
-    resume_from = 0
-    if dest.exists() and (force is False):
-        resume_from = dest.stat().st_size
-        # Move partial dest into .part for append
-        if not tmp.exists():
-            dest.replace(tmp)
-            resume_from = tmp.stat().st_size
-        else:
-            resume_from = tmp.stat().st_size
-    elif tmp.exists() and not force:
-        resume_from = tmp.stat().st_size
-
+    resume_from = tmp.stat().st_size if tmp.exists() and not force else 0
     headers = {"Range": f"bytes={resume_from}-"} if resume_from else {}
     mode = "ab" if resume_from else "wb"
 
     with requests.get(
         url, stream=True, timeout=120, allow_redirects=True, headers=headers
     ) as r:
-        # 206 Partial Content or 200 OK both fine; if server ignores Range and
-        # returns 200, restart from scratch.
         if resume_from and r.status_code == 200:
             resume_from = 0
             mode = "wb"
@@ -151,6 +176,8 @@ def download(
             (p for p in candidates if "neuron" in p.name.lower()),
             candidates[0],
         )
+        if dest.exists():
+            dest.unlink()
         chosen.replace(dest)
         shutil.rmtree(extract_dir)
         tmp.unlink(missing_ok=True)
@@ -163,6 +190,8 @@ def download(
             f"{tmp.stat().st_size:,} < {expected_bytes:,} bytes"
         )
 
+    if dest.exists():
+        dest.unlink()
     tmp.replace(dest)
     print(f"saved: {dest.name} ({dest.stat().st_size:,} bytes)")
     return True

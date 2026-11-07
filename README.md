@@ -33,12 +33,22 @@ conda env update -f environment.yml --prune
 
 ## 下載資料
 
+主分析資料放在 `data/download/`（Codex 手動下載）。備用腳本：
+
 ```bash
 conda activate flywire-dal
 python scripts/download_data.py
 ```
 
-已存在的檔案會略過；需要強制重抓時加 `--force`。
+## 第 3–4 步
+
+```bash
+conda activate flywire-dal
+python scripts/run_validation.py          # 已知結果驗證 → results/validation_*.md
+python scripts/run_dal_screen.py          # DAL 篩選 → results/dal_candidates_*.csv
+# 放寬門檻例：
+python scripts/run_dal_screen.py --min-syn-to-kcabp 3 --min-syn-from-mbon 3
+```
 
 ## 授權提醒
 

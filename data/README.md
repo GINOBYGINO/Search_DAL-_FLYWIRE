@@ -1,32 +1,56 @@
 # 資料出處紀錄
 
-專案 materialization：**v783**
-註解鎖定：**flywire_annotations v2.1.0**（對齊 Nature 2024 公開版）
-本 README 最近更新下載日：**2026-10-19**
+專案 materialization：**v783**  
+註解對照：**flywire_annotations v2.1.0**（Nature 2024）＋ **Codex FAFB v783 下載包**  
+本 README 最近更新：**2026-10-19**
 
-原始檔放在 `raw/`，**不要手改**。由註解母表拆出的表在 `processed/`。報告引用請依下表。
+原始檔**不要手改**。報告引用請依下表。
 
-## 為什麼不用 Codex API 直接抓 neurons？
+---
 
-Codex `download_resource` 現在需要帳號 `api_token`。公開的 `flywire_annotations v2.1.0` 註解表已含 `top_nt`／`top_nt_conf`以及 classification、cell_type 欄位，與論文公開版一致，故以此為準。
+## 主資料：`download/`（Codex 手動下載，第 2 步以此為準）
 
-| 本機路徑 | 版本 | 下載日期 | 來源／網址 | 用途 |
-|---|---|---|---|---|
-| `raw/proofread_connections_783.feather` (261,586,944 bytes; md5 `a4f36b87176787f3a909ba9ac52e44f0`) | 783.0 | 2026-10-19 | Zenodo record 10676866 (FlyWire Whole-brain Connectome Connectivity Data)<br>`https://zenodo.org/records/10676866/files/proofread_connections_783.feather?download=1` | 校對後神經元對神經元連線（neuropil、突觸數、傳導物質平均機率） |
-| `raw/Supplemental_file1_neuron_annotations.tsv` (27,015,208 bytes; md5 `8527e0a95ed5f112766b13260a91e8e2`) | v2.1.0 | 2026-10-19 | flyconnectome/flywire_annotations v2.1.0<br>`https://raw.githubusercontent.com/flyconnectome/flywire_annotations/v2.1.0/supplemental_files/Supplemental_file1_neuron_annotations.tsv` | 神經元註解母表（含 top_nt、flow／super_class／cell_class、cell_type 等；等同 Codex neurons + classification + cell_types 的公開對應） |
-| `processed/neurons_783.csv` (19,566,067 bytes; md5 `46cfab57d040c88eedaca72f03363a56`) | v2.1.0 | 2026-10-19 | flyconnectome/flywire_annotations v2.1.0（本機拆表）<br>`https://raw.githubusercontent.com/flyconnectome/flywire_annotations/v2.1.0/supplemental_files/Supplemental_file1_neuron_annotations.tsv` | 由註解母表匯出（含 top_nt） |
-| `processed/classification_783.csv` (8,650,414 bytes; md5 `4aa7e93035147e334198eaecb30fb348`) | v2.1.0 | 2026-10-19 | flyconnectome/flywire_annotations v2.1.0（本機拆表）<br>`https://raw.githubusercontent.com/flyconnectome/flywire_annotations/v2.1.0/supplemental_files/Supplemental_file1_neuron_annotations.tsv` | 由註解母表匯出（flow／super_class／cell_class 等） |
-| `processed/cell_types_783.csv` (6,293,301 bytes; md5 `065dd60eaef121a69003a0756983ebf5`) | v2.1.0 | 2026-10-19 | flyconnectome/flywire_annotations v2.1.0（本機拆表）<br>`https://raw.githubusercontent.com/flyconnectome/flywire_annotations/v2.1.0/supplemental_files/Supplemental_file1_neuron_annotations.tsv` | 由註解母表匯出（cell_type／hemibrain_type 等） |
+來源入口：https://codex.flywire.ai/api/download?dataset=fafb  
+（使用者於 2026-10-19 下載；未含神經骨架／skeletons，約 13 GB，暫不需要。）
 
-## 重跑下載
+| 本機檔名 | 用途（對應第 2 步） |
+|---|---|
+| `connections_princeton.csv.gz` | 主連線表（pre／post／neuropil／syn_count／nt_type） |
+| `connections_princeton_no_threshold.csv.gz` | 無門檻連線（對照用） |
+| `neurons.csv.gz` | 神經元表；傳導物質欄為 **`nt_type`**（等同計畫中的 top_nt） |
+| `classification.csv.gz` | 階層分類（flow／super_class／class／…） |
+| `consolidated_cell_types.csv.gz` | 細胞類型（primary_type 等） |
+| `fafb_v783_princeton_synapse_table.csv.gz` | 突觸級大表（約 2.5 GB；第 3 步若需要再詳用） |
+| `synapse_coordinates.csv.gz` 等其餘檔 | 座標、標籤、neuropil 統計等輔助 |
 
-```bash
-conda activate flywire-dal
-python scripts/download_data.py
-# 強制重抓：
-python scripts/download_data.py --force
-```
+欄位抽樣確認（2026-10-19）：
 
-## 未下載
+- `neurons.csv.gz`：`root_id`, `nt_type`, `nt_type_score`, …
+- `classification.csv.gz`：`root_id`, `flow`, `super_class`, `class`, …
+- `consolidated_cell_types.csv.gz`：`root_id`, `primary_type`, …
+- `connections_princeton.csv.gz`：`pre_root_id`, `post_root_id`, `neuropil`, `syn_count`, `nt_type`
 
-- 完整突觸點表 `flywire_synapses_783.feather`（Zenodo，約 9.5 GB）：第 3 步若需要再補。
+---
+
+## 備用：`raw/` 與 `processed/`
+
+| 本機路徑 | 狀態 | 來源 | 用途 |
+|---|---|---|---|
+| `raw/Supplemental_file1_neuron_annotations.tsv` | 完整 | [flywire_annotations v2.1.0](https://raw.githubusercontent.com/flyconnectome/flywire_annotations/v2.1.0/supplemental_files/Supplemental_file1_neuron_annotations.tsv) | 含 `top_nt` 的註解母表；可與 Codex 交叉核對 |
+| `processed/neurons_783.csv` 等 | 由母表拆出 | 同上 | 備用；正式分析優先用 `download/` |
+| `raw/proofread_connections_783.feather` | **不完整／勿用**（約 370 MB／852 MB） | Zenodo 10676866 | 已改以 Codex `connections_princeton` 取代 |
+
+---
+
+## 刻意未下載
+
+- **神經骨架（skeletons）**：約 13 GB。第 3–4 步若要做形態／NBLAST 再補。
+- Zenodo 完整 `proofread_connections_783.feather`／`flywire_synapses_783.feather`：目前不需要。
+
+---
+
+## 分析時建議讀哪些檔
+
+1. 連線：`download/connections_princeton.csv.gz`
+2. 傳導物質：`download/neurons.csv.gz` 的 `nt_type`（或註解母表的 `top_nt`）
+3. 分類／類型：`download/classification.csv.gz`、`download/consolidated_cell_types.csv.gz`

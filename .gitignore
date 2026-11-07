@@ -1,12 +1,16 @@
-# Raw / processed data (keep directory placeholders)
+# Raw / processed / Codex download data (keep directory placeholders)
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/download/*
+!data/download/.gitkeep
 
-# Results (keep directory placeholders)
-results/*
-!results/.gitkeep
+# Intermediate / heavy result artifacts (keep CSV, MD, PNG)
+results/*.parquet
+results/_probe_*
+results/_extension_*.txt
+results/_extension_run.txt
 
 # Python
 __pycache__/
